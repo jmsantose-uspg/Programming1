@@ -1,0 +1,11 @@
+Nombre = input("Ingresa tu nombre: ")
+Edad = (input("Ingresa tu edad: "))
+if Edad.isdigit():
+    Edad = int(Edad)
+
+    if Edad >= 18:
+        print (Nombre,"Acceso permitido")
+    else:
+        print (Nombre, "Acceso restringido")
+else:
+    print ("Edad invalida")
