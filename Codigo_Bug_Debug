@@ -1,8 +1,5 @@
-edad = input("Ingresa tu edad: ")
+edad = int(input("Ingresa tu edad: "))
 
-print("DEBUG:", edad)   # print de debug
-
-# BUG: edad es texto pero la comparo con número
 if edad >= 18:
     print("Eres mayor de edad")
 else:
