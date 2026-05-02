@@ -1,0 +1,10 @@
+﻿# Entorno virtual
+.venv/
+
+# Cache de Python
+__pycache__/
+*.pyc
+
+# Datos locales del proyecto de facturacion
+inspeccion_facturacion_camiones/__pycache__/
+inspeccion_facturacion_camiones/data/
