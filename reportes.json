@@ -1,0 +1,16 @@
+[
+  {
+    "vecino": "Casa 99",
+    "tipo": "Quejas",
+    "descripcion": "Bloqueos",
+    "fecha": "27/04/2026 00:36",
+    "id": 2
+  },
+  {
+    "vecino": "11",
+    "tipo": "Quejas",
+    "descripcion": "Bloquearon mi parqueo",
+    "fecha": "27/04/2026 00:36",
+    "id": 1
+  }
+]

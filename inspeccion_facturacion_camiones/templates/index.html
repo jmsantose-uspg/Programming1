@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Control de Inspeccion Vehicular</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero">
+            <div>
+                <p class="eyebrow">Oficina de facturacion</p>
+                <h1>Control de inspeccion vehicular</h1>
+                <p class="hero-copy">
+                    Registra la revision del camion antes de su ingreso a facturacion.
+                    La tablet captura la inspeccion y la computadora de oficina la almacena en la misma red.
+                </p>
+            </div>
+            <div class="hero-meta">
+                <span class="meta-card">
+                    <strong>{{ now }}</strong>
+                    <small>Fecha actual</small>
+                </span>
+                <a class="meta-card action-card" href="{{ url_for('export_csv') }}">
+                    <strong>Exportar CSV</strong>
+                    <small>Descargar historial</small>
+                </a>
+            </div>
+        </header>
+
+        <section class="stats-grid">
+            <article class="stat-card">
+                <span>Total hoy</span>
+                <strong>{{ stats.total_today }}</strong>
+            </article>
+            <article class="stat-card approved">
+                <span>Aprobados</span>
+                <strong>{{ stats.approved }}</strong>
+            </article>
+            <article class="stat-card conditional">
+                <span>Condicionales</span>
+                <strong>{{ stats.conditional }}</strong>
+            </article>
+            <article class="stat-card rejected">
+                <span>Rechazados</span>
+                <strong>{{ stats.rejected }}</strong>
+            </article>
+        </section>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <section class="alerts">
+                    {% for category, message in messages %}
+                        <div class="alert {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </section>
+            {% endif %}
+        {% endwith %}
+
+        <main class="layout-grid">
+            <section class="panel form-panel">
+                <div class="section-header">
+                    <p class="eyebrow">Captura desde tablet</p>
+                    <h2>Nueva inspeccion</h2>
+                </div>
+
+                <form method="post" action="{{ url_for('save_inspection') }}" class="inspection-form">
+                    <div class="form-grid">
+                        <label>
+                            Numero de unidad
+                            <input name="numero_unidad" value="{{ form_data.get('numero_unidad', '') }}" placeholder="Ej. CD-01" required>
+                        </label>
+                        <label>
+                            Placa
+                            <input name="placa" value="{{ form_data.get('placa', '') }}" placeholder="Ej. P123ABC" required>
+                        </label>
+                        <label>
+                            Piloto
+                            <input name="piloto" value="{{ form_data.get('piloto', '') }}" placeholder="Nombre completo" required>
+                        </label>
+                        <label>
+                            Empresa transportista
+                            <input name="empresa" value="{{ form_data.get('empresa', '') }}" placeholder="Proveedor o transportista" required>
+                        </label>
+                        <label>
+                            Producto o carga
+                            <input name="producto" value="{{ form_data.get('producto', '') }}" placeholder="Combustible, materia prima, etc." required>
+                        </label>
+                        <label>
+                            Documento de referencia
+                            <input name="documento_referencia" value="{{ form_data.get('documento_referencia', '') }}" placeholder="Boleta, vale, orden, etc.">
+                        </label>
+                        <label>
+                            Origen
+                            <input name="origen" value="{{ form_data.get('origen', '') }}" placeholder="Punto de salida">
+                        </label>
+                        <label>
+                            Destino
+                            <input name="destino" value="{{ form_data.get('destino', '') }}" placeholder="Destino esperado">
+                        </label>
+                        <label>
+                            Inspector responsable
+                            <input name="inspector" value="{{ form_data.get('inspector', '') }}" placeholder="Nombre del inspector" required>
+                        </label>
+                        <label>
+                            Resultado final
+                            <select name="resultado_final" required>
+                                <option value="">Selecciona una opcion</option>
+                                {% for option in result_options %}
+                                    <option value="{{ option }}" {% if form_data.get('resultado_final') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="section-header compact">
+                        <p class="eyebrow">Checklist</p>
+                        <h3>Revision operativa</h3>
+                    </div>
+
+                    <div class="checklist-list">
+                        {% for field in checklist_fields %}
+                            <article class="check-item">
+                                <div class="check-item-top">
+                                    <h4>{{ field.label }}</h4>
+                                    <div class="segmented">
+                                        {% for value, label in status_labels.items() %}
+                                            <label class="radio-pill">
+                                                <input
+                                                    type="radio"
+                                                    name="{{ field.name }}"
+                                                    value="{{ value }}"
+                                                    {% if form_data.get(field.name) == value %}checked{% endif %}
+                                                    required
+                                                >
+                                                <span>{{ label }}</span>
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <label class="note-label">
+                                    Nota opcional
+                                    <input
+                                        name="{{ field.name }}_nota"
+                                        value="{{ form_data.get(field.name ~ '_nota', '') }}"
+                                        placeholder="Detalle adicional si aplica"
+                                    >
+                                </label>
+                            </article>
+                        {% endfor %}
+                    </div>
+
+                    <label class="full-width">
+                        Observaciones generales
+                        <textarea name="observaciones_generales" rows="4" placeholder="Escribe hallazgos, restricciones o comentarios finales">{{ form_data.get('observaciones_generales', '') }}</textarea>
+                    </label>
+
+                    <div class="form-actions">
+                        <button type="submit" class="primary-button">Guardar inspeccion</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="panel history-panel">
+                <div class="section-header">
+                    <p class="eyebrow">Panel de oficina</p>
+                    <h2>Inspecciones recientes</h2>
+                </div>
+
+                {% if inspections %}
+                    <div class="inspection-list">
+                        {% for inspection in inspections %}
+                            <details class="inspection-card">
+                                <summary>
+                                    <div>
+                                        <strong>{{ inspection.numero_unidad }}</strong>
+                                        <span>{{ inspection.placa }} · {{ inspection.piloto }}</span>
+                                    </div>
+                                    <div class="summary-right">
+                                        <span class="badge {{ inspection.resultado_final|lower }}">{{ inspection.resultado_final }}</span>
+                                        <small>{{ inspection.created_at }}</small>
+                                    </div>
+                                </summary>
+                                <div class="inspection-body">
+                                    <div class="mini-grid">
+                                        <p><strong>Empresa:</strong> {{ inspection.empresa }}</p>
+                                        <p><strong>Producto:</strong> {{ inspection.producto }}</p>
+                                        <p><strong>Documento:</strong> {{ inspection.documento_referencia or 'N/A' }}</p>
+                                        <p><strong>Inspector:</strong> {{ inspection.inspector }}</p>
+                                        <p><strong>Origen:</strong> {{ inspection.origen or 'N/A' }}</p>
+                                        <p><strong>Destino:</strong> {{ inspection.destino or 'N/A' }}</p>
+                                    </div>
+
+                                    <div class="check-summary">
+                                        {% for check in inspection.checklist %}
+                                            <div class="check-summary-item {{ check.status }}">
+                                                <div>
+                                                    <strong>{{ check.label }}</strong>
+                                                    <span>{{ check.status_label }}</span>
+                                                </div>
+                                                {% if check.note %}
+                                                    <p>{{ check.note }}</p>
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+
+                                    {% if inspection.observaciones_generales %}
+                                        <div class="notes-box">
+                                            <strong>Observaciones generales</strong>
+                                            <p>{{ inspection.observaciones_generales }}</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </details>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <h3>Aun no hay inspecciones registradas</h3>
+                        <p>Usa el formulario para registrar la primera revision y verla aqui en tiempo real.</p>
+                    </div>
+                {% endif %}
+            </section>
+        </main>
+    </div>
+</body>
+</html>
