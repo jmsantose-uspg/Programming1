@@ -4,16 +4,19 @@ Aplicacion web para capturar inspecciones de camiones desde una tablet y almacen
 
 ## Como funciona
 
-- La computadora de facturacion ejecuta el servidor Flask.
+- La computadora de facturacion ejecuta la app web con Python.
 - La tablet abre la IP local de esa computadora en el navegador.
-- Cada inspeccion se guarda en una base SQLite local.
-- El personal de oficina puede revisar el historial y exportarlo a CSV.
+- Cada inspeccion se guarda en MariaDB.
+- El personal de oficina puede revisar el historial y exportarlo a Excel.
 
 ## Tecnologias
 
 - Python
 - Flask
-- SQLite
+- MariaDB
+- PyMySQL
+- Waitress
+- openpyxl
 - HTML, CSS y JavaScript del navegador
 
 ## Estructura
@@ -21,26 +24,42 @@ Aplicacion web para capturar inspecciones de camiones desde una tablet y almacen
 - `app.py`: servidor principal
 - `templates/index.html`: interfaz principal
 - `static/style.css`: estilos
-- `data/inspecciones.db`: base de datos local
+- `serve_app.py`: arranque con Waitress
+- `iniciar_app.ps1`: script de inicio en Windows
 
 ## Instalacion
 
-1. Crear y activar un entorno virtual.
-2. Instalar dependencias:
+1. Instalar dependencias:
 
 ```powershell
 pip install -r requirements.txt
 ```
 
+2. Configurar las variables de entorno para MariaDB:
+
+```powershell
+$env:IMPALA_DB_HOST = "localhost"
+$env:IMPALA_DB_USER = "impala_app"
+$env:IMPALA_DB_PASSWORD = "TU_PASSWORD"
+$env:IMPALA_DB_NAME = "inspeccion_camiones"
+$env:IMPALA_DB_PORT = "3306"
+```
+
 3. Ejecutar la app:
 
 ```powershell
-python app.py
+python serve_app.py
+```
+
+Si `python` no funciona en Windows, usa el script incluido:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\iniciar_app.ps1
 ```
 
 ## Uso en red local
 
-Como el servidor arranca con `host="0.0.0.0"`, la app puede abrirse desde otro dispositivo en la misma red Wi-Fi usando:
+Como el servidor arranca en la red local, la app puede abrirse desde otro dispositivo en la misma red Wi-Fi usando:
 
 ```text
 http://IP_LOCAL_DE_LA_PC:5000/
@@ -52,6 +71,7 @@ Ejemplo:
 http://192.168.1.20:5000/
 ```
 
-## Supuestos actuales
-
-Esta primera version incluye un checklist base de inspeccion. Si necesitas que los campos coincidan exactamente con tu proceso real, solo hay que ajustar la lista `CHECKLIST_FIELDS` y los campos del formulario.
+## Notas
+- El repo no incluye la base de datos ni credenciales sensibles.
+- Antes de usar la app en otra computadora, debes crear la base `inspeccion_camiones` y el usuario correspondiente en MariaDB.
+- El checklist y los formularios pueden ajustarse desde `app.py` y `templates/index.html`.

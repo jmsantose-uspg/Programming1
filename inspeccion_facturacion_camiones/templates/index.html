@@ -4,17 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Control de Inspeccion Vehicular</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20260517-exit-flow') }}">
 </head>
 <body>
     <div class="page-shell">
         <header class="hero">
             <div>
-                <p class="eyebrow">Oficina de facturacion</p>
-                <h1>Control de inspeccion vehicular</h1>
+                <p class="eyebrow">Impala Terminals Guatemala, S.A.</p>
+                <h1>Inspeccion de Pre-ingreso de Camion Cisterna</h1>
                 <p class="hero-copy">
-                    Registra la revision del camion antes de su ingreso a facturacion.
-                    La tablet captura la inspeccion y la computadora de oficina la almacena en la misma red.
+                    Sistema de Gestion de Calidad.
                 </p>
             </div>
             <div class="hero-meta">
@@ -22,9 +21,9 @@
                     <strong>{{ now }}</strong>
                     <small>Fecha actual</small>
                 </span>
-                <a class="meta-card action-card" href="{{ url_for('export_csv') }}">
-                    <strong>Exportar CSV</strong>
-                    <small>Descargar historial</small>
+                <a class="meta-card action-card" href="{{ url_for('export_excel') }}">
+                    <strong>Exportar Excel</strong>
+                    <small>Descargar historial ordenado</small>
                 </a>
             </div>
         </header>
@@ -35,15 +34,11 @@
                 <strong>{{ stats.total_today }}</strong>
             </article>
             <article class="stat-card approved">
-                <span>Aprobados</span>
+                <span>Cumple</span>
                 <strong>{{ stats.approved }}</strong>
             </article>
-            <article class="stat-card conditional">
-                <span>Condicionales</span>
-                <strong>{{ stats.conditional }}</strong>
-            </article>
             <article class="stat-card rejected">
-                <span>Rechazados</span>
+                <span>No cumple</span>
                 <strong>{{ stats.rejected }}</strong>
             </article>
         </section>
@@ -66,7 +61,34 @@
                 </div>
 
                 <form method="post" action="{{ url_for('save_inspection') }}" class="inspection-form">
+                    <div class="section-header compact">
+                        <p class="eyebrow">Control de acceso</p>
+                        <h3>Datos de pre-ingreso</h3>
+                    </div>
+
                     <div class="form-grid">
+                        <label>
+                            Guardia de turno
+                            <select name="guardia_turno" required>
+                                <option value="">Selecciona una opcion</option>
+                                {% for option in ["Guardia 1", "Guardia 2", "Guardia 3", "Guardia 4", "Guardia 5"] %}
+                                    <option value="{{ option }}" {% if form_data.get('guardia_turno') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label>
+                            Hora de entrada
+                            <input type="time" name="hora_entrada" value="{{ form_data.get('hora_entrada', '') }}" required>
+                        </label>
+                        <label>
+                            Tipo de operacion
+                            <select name="tipo_operacion" required>
+                                <option value="">Selecciona una opcion</option>
+                                {% for option in operation_options %}
+                                    <option value="{{ option }}" {% if form_data.get('tipo_operacion') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
                         <label>
                             Numero de unidad
                             <input name="numero_unidad" value="{{ form_data.get('numero_unidad', '') }}" placeholder="Ej. CD-01" required>
@@ -84,86 +106,155 @@
                             <input name="empresa" value="{{ form_data.get('empresa', '') }}" placeholder="Proveedor o transportista" required>
                         </label>
                         <label>
-                            Producto o carga
-                            <input name="producto" value="{{ form_data.get('producto', '') }}" placeholder="Combustible, materia prima, etc." required>
-                        </label>
-                        <label>
-                            Documento de referencia
-                            <input name="documento_referencia" value="{{ form_data.get('documento_referencia', '') }}" placeholder="Boleta, vale, orden, etc.">
-                        </label>
-                        <label>
-                            Origen
-                            <input name="origen" value="{{ form_data.get('origen', '') }}" placeholder="Punto de salida">
-                        </label>
-                        <label>
-                            Destino
-                            <input name="destino" value="{{ form_data.get('destino', '') }}" placeholder="Destino esperado">
-                        </label>
-                        <label>
-                            Inspector responsable
-                            <input name="inspector" value="{{ form_data.get('inspector', '') }}" placeholder="Nombre del inspector" required>
-                        </label>
-                        <label>
-                            Resultado final
-                            <select name="resultado_final" required>
+                            Tipo de producto
+                            <select name="producto" required>
                                 <option value="">Selecciona una opcion</option>
-                                {% for option in result_options %}
-                                    <option value="{{ option }}" {% if form_data.get('resultado_final') == option %}selected{% endif %}>{{ option }}</option>
+                                {% for option in product_options %}
+                                    <option value="{{ option }}" {% if form_data.get('producto') == option %}selected{% endif %}>{{ option }}</option>
                                 {% endfor %}
                             </select>
                         </label>
+                        <label>
+                            Numero de pedido
+                            <input name="documento_referencia" value="{{ form_data.get('documento_referencia', '') }}" placeholder="Pedido / orden de carga" required>
+                        </label>
+                    </div>
+
+                    <div class="epp-banner">
+                        <strong>EPP requerido</strong>
+                        <span>{{ epp_description }}</span>
                     </div>
 
                     <div class="section-header compact">
-                        <p class="eyebrow">Checklist</p>
-                        <h3>Revision operativa</h3>
+                        <p class="eyebrow">Checklist oficial</p>
+                        <h3>Revision por series A, B y C</h3>
                     </div>
 
-                    <div class="checklist-list">
-                        {% for field in checklist_fields %}
-                            <article class="check-item">
-                                <div class="check-item-top">
-                                    <h4>{{ field.label }}</h4>
-                                    <div class="segmented">
-                                        {% for value, label in status_labels.items() %}
-                                            <label class="radio-pill">
-                                                <input
-                                                    type="radio"
-                                                    name="{{ field.name }}"
-                                                    value="{{ value }}"
-                                                    {% if form_data.get(field.name) == value %}checked{% endif %}
-                                                    required
-                                                >
-                                                <span>{{ label }}</span>
-                                            </label>
-                                        {% endfor %}
+                    {% for section in checklist_sections %}
+                        <section class="check-section">
+                            <div class="check-section-header">
+                                <div>
+                                    <p class="eyebrow">{{ section.code }}</p>
+                                    <h4>{{ section.title }}</h4>
+                                </div>
+                                <div class="check-section-tools">
+                                    <p>{{ section.description }}</p>
+                                    <div class="section-bulk-actions">
+                                        <button type="button" class="bulk-button" data-section="{{ section.code }}" data-status="ok">Marcar serie {{ section.code }}: Cumple</button>
+                                        <button type="button" class="bulk-button danger" data-section="{{ section.code }}" data-status="fail">Marcar serie {{ section.code }}: No cumple</button>
                                     </div>
                                 </div>
-                                <label class="note-label">
-                                    Nota opcional
-                                    <input
-                                        name="{{ field.name }}_nota"
-                                        value="{{ form_data.get(field.name ~ '_nota', '') }}"
-                                        placeholder="Detalle adicional si aplica"
-                                    >
-                                </label>
-                            </article>
-                        {% endfor %}
-                    </div>
+                            </div>
+
+                            <div class="checklist-list">
+                                {% for field in section.fields %}
+                                    <article class="check-item" data-section="{{ section.code }}">
+                                        <div class="check-item-top">
+                                            <h5>{{ field.label }}</h5>
+                                            <div class="segmented">
+                                                {% for value, label in status_labels.items() %}
+                                                    <label class="radio-pill">
+                                                        <input
+                                                            type="radio"
+                                                            name="{{ field.name }}"
+                                                            value="{{ value }}"
+                                                            data-section="{{ section.code }}"
+                                                            {% if form_data.get(field.name) == value %}checked{% endif %}
+                                                            required
+                                                        >
+                                                        <span>{{ label }}</span>
+                                                    </label>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% endfor %}
 
                     <label class="full-width">
-                        Observaciones generales
-                        <textarea name="observaciones_generales" rows="4" placeholder="Escribe hallazgos, restricciones o comentarios finales">{{ form_data.get('observaciones_generales', '') }}</textarea>
+                        Resultado final
+                        <select name="resultado_final" required>
+                            <option value="">Selecciona una opcion</option>
+                            {% for option in result_options %}
+                                <option value="{{ option }}" {% if form_data.get('resultado_final') == option %}selected{% endif %}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <label class="full-width">
+                        Nota de respaldo del checklist
+                        <textarea name="observaciones_generales" rows="4" placeholder="Escribe aqui el respaldo general del checklist, hallazgos o comentarios finales">{{ form_data.get('observaciones_generales', '') }}</textarea>
                     </label>
 
                     <div class="form-actions">
-                        <button type="submit" class="primary-button">Guardar inspeccion</button>
+                        <button type="submit" class="primary-button">Registrar nuevo ingreso</button>
                     </div>
                 </form>
             </section>
 
             <section class="panel history-panel">
                 <div class="section-header">
+                    <p class="eyebrow">Control de salida</p>
+                    <h2>Completar despacho</h2>
+                </div>
+
+                <form method="post" action="{{ url_for('save_exit') }}" class="inspection-form exit-form">
+                    <div class="form-grid">
+                        <label>
+                            Numero de pedido
+                            <input id="pedido-salida" name="documento_referencia_salida" value="{{ salida_form_data.get('documento_referencia_salida', '') }}" placeholder="Busca el pedido registrado" required>
+                        </label>
+                        <label>
+                            Hora de salida
+                            <input type="time" name="hora_salida" value="{{ salida_form_data.get('hora_salida', '') }}" required>
+                        </label>
+                        <label>
+                            Inspector de salida
+                            <select name="inspector_salida" required>
+                                <option value="">Selecciona una opcion</option>
+                                {% for option in ["Guardia 1", "Guardia 2", "Guardia 3", "Guardia 4", "Guardia 5"] %}
+                                    <option value="{{ option }}" {% if salida_form_data.get('inspector_salida') == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label>
+                            Cantidad de marchamos
+                            <input type="number" min="0" name="cantidad_marchamos" value="{{ salida_form_data.get('cantidad_marchamos', '') }}" placeholder="Ej. 2" required>
+                        </label>
+                    </div>
+
+                    <div id="pedido-preview" class="lookup-card hidden" aria-live="polite">
+                        <strong>Pedido encontrado</strong>
+                        <div class="lookup-grid">
+                            <p><strong>Unidad:</strong> <span data-field="numero_unidad">-</span></p>
+                            <p><strong>Placa:</strong> <span data-field="placa">-</span></p>
+                            <p><strong>Piloto:</strong> <span data-field="piloto">-</span></p>
+                            <p><strong>Producto:</strong> <span data-field="producto">-</span></p>
+                            <p><strong>Hora entrada:</strong> <span data-field="hora_entrada">-</span></p>
+                            <p><strong>Hora salida actual:</strong> <span data-field="hora_salida">-</span></p>
+                        </div>
+                    </div>
+
+                    <p id="pedido-preview-error" class="lookup-error hidden"></p>
+
+                    <label class="full-width">
+                        Correlativos de marchamos
+                        <textarea name="correlativos_marchamos" rows="3" placeholder="Ej. M-10025, M-10026" required>{{ salida_form_data.get('correlativos_marchamos', '') }}</textarea>
+                    </label>
+
+                    <label class="full-width">
+                        Observaciones de salida
+                        <textarea name="observaciones_salida" rows="3" placeholder="Detalle adicional del despacho">{{ salida_form_data.get('observaciones_salida', '') }}</textarea>
+                    </label>
+
+                    <div class="form-actions">
+                        <button type="submit" class="secondary-button">Registrar salida</button>
+                    </div>
+                </form>
+
+                <div class="section-header history-header">
                     <p class="eyebrow">Panel de oficina</p>
                     <h2>Inspecciones recientes</h2>
                 </div>
@@ -178,18 +269,22 @@
                                         <span>{{ inspection.placa }} · {{ inspection.piloto }}</span>
                                     </div>
                                     <div class="summary-right">
-                                        <span class="badge {{ inspection.resultado_final|lower }}">{{ inspection.resultado_final }}</span>
+                                        <span class="badge {{ inspection.resultado_final|lower|replace(' ', '-') }}">{{ inspection.resultado_final }}</span>
                                         <small>{{ inspection.created_at }}</small>
                                     </div>
                                 </summary>
                                 <div class="inspection-body">
                                     <div class="mini-grid">
+                                        <p><strong>Guardia:</strong> {{ inspection.guardia_turno or 'N/A' }}</p>
+                                        <p><strong>Hora entrada:</strong> {{ inspection.hora_entrada or 'N/A' }}</p>
+                                        <p><strong>Hora salida:</strong> {{ inspection.hora_salida or 'N/A' }}</p>
+                                        <p><strong>Inspector salida:</strong> {{ inspection.inspector_salida or 'N/A' }}</p>
+                                        <p><strong>Marchamos:</strong> {{ inspection.cantidad_marchamos or 'N/A' }}</p>
+                                        <p><strong>Tipo de operacion:</strong> {{ inspection.tipo_operacion or 'N/A' }}</p>
                                         <p><strong>Empresa:</strong> {{ inspection.empresa }}</p>
                                         <p><strong>Producto:</strong> {{ inspection.producto }}</p>
                                         <p><strong>Documento:</strong> {{ inspection.documento_referencia or 'N/A' }}</p>
-                                        <p><strong>Inspector:</strong> {{ inspection.inspector }}</p>
-                                        <p><strong>Origen:</strong> {{ inspection.origen or 'N/A' }}</p>
-                                        <p><strong>Destino:</strong> {{ inspection.destino or 'N/A' }}</p>
+                                        <p><strong>Inspector ingreso:</strong> {{ inspection.inspector }}</p>
                                     </div>
 
                                     <div class="check-summary">
@@ -199,17 +294,26 @@
                                                     <strong>{{ check.label }}</strong>
                                                     <span>{{ check.status_label }}</span>
                                                 </div>
-                                                {% if check.note %}
-                                                    <p>{{ check.note }}</p>
-                                                {% endif %}
                                             </div>
                                         {% endfor %}
                                     </div>
 
                                     {% if inspection.observaciones_generales %}
                                         <div class="notes-box">
-                                            <strong>Observaciones generales</strong>
+                                            <strong>Nota de respaldo del checklist</strong>
                                             <p>{{ inspection.observaciones_generales }}</p>
+                                        </div>
+                                    {% endif %}
+
+                                    {% if inspection.correlativos_marchamos or inspection.observaciones_salida %}
+                                        <div class="notes-box">
+                                            <strong>Control de salida</strong>
+                                            {% if inspection.correlativos_marchamos %}
+                                                <p><strong>Correlativos:</strong> {{ inspection.correlativos_marchamos }}</p>
+                                            {% endif %}
+                                            {% if inspection.observaciones_salida %}
+                                                <p><strong>Observaciones:</strong> {{ inspection.observaciones_salida }}</p>
+                                            {% endif %}
                                         </div>
                                     {% endif %}
                                 </div>
@@ -225,5 +329,82 @@
             </section>
         </main>
     </div>
+    <script>
+        (() => {
+            const bulkButtons = document.querySelectorAll(".bulk-button");
+
+            bulkButtons.forEach((button) => {
+                button.addEventListener("click", () => {
+                    const section = button.dataset.section;
+                    const status = button.dataset.status;
+                    const radios = document.querySelectorAll(`input[type="radio"][data-section="${section}"][value="${status}"]`);
+                    radios.forEach((radio) => {
+                        radio.checked = true;
+                        radio.dispatchEvent(new Event("change", { bubbles: true }));
+                    });
+                });
+            });
+        })();
+
+        (() => {
+            const input = document.getElementById("pedido-salida");
+            const preview = document.getElementById("pedido-preview");
+            const errorBox = document.getElementById("pedido-preview-error");
+
+            if (!input || !preview || !errorBox) {
+                return;
+            }
+
+            let timer = null;
+
+            const setHidden = (element, hidden) => {
+                element.classList.toggle("hidden", hidden);
+            };
+
+            const fillPreview = (data) => {
+                preview.querySelector('[data-field="numero_unidad"]').textContent = data.numero_unidad || "-";
+                preview.querySelector('[data-field="placa"]').textContent = data.placa || "-";
+                preview.querySelector('[data-field="piloto"]').textContent = data.piloto || "-";
+                preview.querySelector('[data-field="producto"]').textContent = data.producto || "-";
+                preview.querySelector('[data-field="hora_entrada"]').textContent = data.hora_entrada || "-";
+                preview.querySelector('[data-field="hora_salida"]').textContent = data.hora_salida || "Pendiente";
+            };
+
+            const searchOrder = async () => {
+                const pedido = input.value.trim();
+                setHidden(errorBox, true);
+
+                if (!pedido) {
+                    setHidden(preview, true);
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/inspecciones/buscar?pedido=${encodeURIComponent(pedido)}`);
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || "No se encontro el pedido.");
+                    }
+
+                    fillPreview(data);
+                    setHidden(preview, false);
+                } catch (error) {
+                    setHidden(preview, true);
+                    errorBox.textContent = error.message;
+                    setHidden(errorBox, false);
+                }
+            };
+
+            input.addEventListener("input", () => {
+                clearTimeout(timer);
+                timer = setTimeout(searchOrder, 250);
+            });
+
+            if (input.value.trim()) {
+                searchOrder();
+            }
+        })();
+    </script>
 </body>
 </html>
